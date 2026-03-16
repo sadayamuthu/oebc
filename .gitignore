@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.coverage
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+
+# Generated artifacts (published to openastra.org, not committed)
+oebc_full_catalog_enriched.json
+
+# Superpowers (design docs, plans — local only)
+docs/superpowers/
+
+# IDE
+.vscode/
+.idea/
+*.swp
