@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openastra.org/oebc/schema/v0.1/oebc.json",
+  "title": "Open Exposure Baseline Catalog",
+  "description": "Schema for the enriched CVE exposure catalog produced by OEBC.",
+  "type": "object",
+  "required": ["project", "project_version", "generated_at_utc", "sources", "rules", "count", "vulnerabilities"],
+  "additionalProperties": false,
+  "properties": {
+    "project": { "type": "string" },
+    "project_version": { "type": "string" },
+    "generated_at_utc": { "type": "string", "format": "date-time" },
+    "sources": {
+      "type": "object",
+      "required": ["nvd", "epss", "kev"],
+      "properties": {
+        "nvd": { "type": "string" },
+        "epss": { "type": "string" },
+        "kev": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "rules": { "type": "object" },
+    "count": { "type": "integer", "minimum": 0 },
+    "vulnerabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cve_id", "description", "published_date", "last_modified_date",
+          "cwe_ids", "cvss_score", "cvss_vector", "cvss_version", "cvss_severity",
+          "epss_score", "epss_percentile",
+          "kev_listed", "kev_date_added", "kev_due_date", "kev_ransomware_use",
+          "exposure_tier", "actionable"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "cve_id": { "type": "string", "pattern": "^CVE-[0-9]{4}-[0-9]+$" },
+          "description": { "type": "string" },
+          "published_date": { "type": "string" },
+          "last_modified_date": { "type": "string" },
+          "cwe_ids": { "type": "array", "items": { "type": "string" } },
+          "cvss_score": { "type": ["number", "null"] },
+          "cvss_vector": { "type": ["string", "null"] },
+          "cvss_version": { "type": ["string", "null"] },
+          "cvss_severity": { "type": ["string", "null"] },
+          "epss_score": { "type": ["number", "null"] },
+          "epss_percentile": { "type": ["number", "null"] },
+          "kev_listed": { "type": "boolean" },
+          "kev_date_added": { "type": ["string", "null"] },
+          "kev_due_date": { "type": ["string", "null"] },
+          "kev_ransomware_use": { "type": ["string", "null"] },
+          "exposure_tier": { "type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+          "actionable": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
