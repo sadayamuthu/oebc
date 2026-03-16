@@ -62,18 +62,25 @@ jobs:
           SCHEMA_DIR="v$(echo $VERSION | cut -d. -f1-2)"
           DATE=$(date -u +%Y-%m-%d)
 
+          # Compress catalog — raw JSON is ~290 MB which exceeds GitHub's 100 MB limit.
+          # gzip typically achieves ~10x compression on JSON, bringing it to ~25-30 MB.
+          gzip -9 -k oebc_full_catalog_enriched.json
+          # Rename so the extension stays .json.gz for clarity
+          mv oebc_full_catalog_enriched.json.gz oebc_full_catalog_enriched.json.gz
+
           git clone https://x-access-token:${DEPLOY_TOKEN}@github.com/sadayamuthu/openastra.org.git /tmp/openastra-org
 
-          mkdir -p /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/historical
-          cp oebc_full_catalog_enriched.json \
-            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/latest.json
-          cp oebc_full_catalog_enriched.json \
-            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/historical/${DATE}.json
+          # Publish only the compressed latest snapshot to the repo.
+          # Historical snapshots are attached to GitHub Releases (see next step)
+          # to avoid unbounded repo growth (~30 MB/day).
+          mkdir -p /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}
+          cp oebc_full_catalog_enriched.json.gz \
+            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
 
           cd /tmp/openastra-org
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          git add oebc/catalog/${SCHEMA_DIR}/
+          git add oebc/catalog/${SCHEMA_DIR}/latest.json.gz
           if git diff --cached --quiet; then
             echo "No catalog changes to publish."
             echo "published=false" >> "$GITHUB_OUTPUT"
@@ -83,7 +90,7 @@ jobs:
             echo "published=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release with historical snapshot
         if: steps.publish.outputs.published == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -94,6 +101,9 @@ jobs:
           VERSION=$(tr -d '[:space:]' < spec/VERSION)
           SCHEMA_DIR="v$(echo $VERSION | cut -d. -f1-2)"
           DATE=$(date -u +%Y-%m-%d)
+
+          # Name the release asset with the date so each release is self-describing
+          cp oebc_full_catalog_enriched.json.gz "oebc-catalog-${DATE}.json.gz"
 
           gh release delete "$TAG" --yes 2>/dev/null || true
           git tag -d "$TAG" 2>/dev/null || true
@@ -110,11 +120,26 @@ jobs:
           **Generated at:** ${GENERATED}
           **Total vulnerabilities:** ${COUNT}
 
+          ### Download
+
+          The catalog is gzip-compressed JSON (~25-30 MB). Decompress with:
+
+          \`\`\`bash
+          curl -L https://openastra.org/oebc/catalog/${SCHEMA_DIR}/latest.json.gz | gunzip > oebc_catalog.json
+          \`\`\`
+
+          Or download the historical snapshot attached to this release and decompress locally:
+
+          \`\`\`bash
+          gunzip oebc-catalog-${DATE}.json.gz
+          \`\`\`
+
           ### Catalog URLs
 
-          - Latest: https://openastra.org/oebc/catalog/${SCHEMA_DIR}/latest.json
-          - This date: https://openastra.org/oebc/catalog/${SCHEMA_DIR}/historical/${DATE}.json
+          - Latest (compressed): https://openastra.org/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
+          - Historical snapshots: attached as release assets to each daily release
 
           > Generated automatically by GitHub Actions from NVD, EPSS, and CISA KEV sources.
           EOF
-          )"
+          )" \
+            "oebc-catalog-${DATE}.json.gz"

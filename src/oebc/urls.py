@@ -12,6 +12,6 @@ EPSS_URL = "https://api.first.org/data/v1/epss"
 # CISA Known Exploited Vulnerabilities catalog
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 
-# Pre-built OEBC catalog published daily to openastra.org
+# Pre-built OEBC catalog published daily to openastra.org (gzip-compressed JSON)
 # Update this constant when the schema major/minor version changes (e.g., v0.1 → v0.2)
-OEBC_CATALOG_URL = "https://openastra.org/oebc/catalog/v0.1/latest.json"
+OEBC_CATALOG_URL = "https://openastra.org/oebc/catalog/v0.1/latest.json.gz"

@@ -7,7 +7,7 @@
 [![CI](https://github.com/sadayamuthu/oebc/actions/workflows/develop.yml/badge.svg)](https://github.com/sadayamuthu/oebc/actions/workflows/develop.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Catalog](https://img.shields.io/badge/catalog-latest-green)](https://openastra.org/oebc/catalog/v0.1/latest.json)
+[![Catalog](https://img.shields.io/badge/catalog-latest-green)](https://openastra.org/oebc/catalog/v0.1/latest.json.gz)
 [![Schema](https://img.shields.io/badge/schema-v0.1-blue)](https://openastra.org/oebc/schema/v0.1/oebc.json)
 
 [Catalog](#catalog) · [Quick Start](#quick-start) · [CLI](#cli-usage) · [Schema](#output-schema) · [Automation](#automation)
@@ -24,9 +24,9 @@ OEBC is a daily, machine-readable, cloud-agnostic **exposure baseline catalog** 
 - **[FIRST.org EPSS](https://www.first.org/epss/)** — Exploitation probability score and percentile per CVE
 - **[CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog)** — Known Exploited Vulnerabilities with ransomware use flags
 
-Every CVE is enriched with derived fields (`exposure_tier`, `actionable`) and published as a complete, self-contained JSON catalog at:
+Every CVE is enriched with derived fields (`exposure_tier`, `actionable`) and published as a gzip-compressed JSON catalog at:
 
-**`https://openastra.org/oebc/catalog/v0.1/latest.json`**
+**`https://openastra.org/oebc/catalog/v0.1/latest.json.gz`**
 
 OEBC is consumed by **ExposureGate**, a CTEM (Continuous Threat Exposure Management) platform built on exposure baselines.
 
@@ -46,9 +46,10 @@ NVD CVE API         FIRST.org EPSS       CISA KEV
                           │
               Enrich: exposure_tier + actionable
                           │
-               ┌──────────┴──────────┐
-               │                     │
-         latest.json        historical/YYYY-MM-DD.json
+               ┌────────────────┴──────────────────┐
+               │                                   │
+         latest.json.gz               GitHub Release asset
+         (openastra.org repo)     oebc-catalog-YYYY-MM-DD.json.gz
                │
          openastra.org/oebc/catalog/v0.1/
 ```
@@ -59,10 +60,12 @@ NVD CVE API         FIRST.org EPSS       CISA KEV
 
 | Artifact | URL |
 |----------|-----|
-| Latest catalog | `https://openastra.org/oebc/catalog/v0.1/latest.json` |
-| Historical catalog | `https://openastra.org/oebc/catalog/v0.1/historical/{YYYY-MM-DD}.json` |
+| Latest catalog (gzip) | `https://openastra.org/oebc/catalog/v0.1/latest.json.gz` |
+| Historical snapshots | GitHub Release assets on each `baseline-YYYY-MM-DD` release |
 | JSON Schema | `https://openastra.org/oebc/schema/v0.1/oebc.json` |
 | YAML Schema | `https://openastra.org/oebc/schema/v0.1/oebc.yaml` |
+
+> The catalog is gzip-compressed to stay under GitHub's 100 MB file size limit (raw JSON is ~290 MB; compressed is ~25–30 MB). Historical daily snapshots are attached as release assets rather than committed to the repo, keeping repo size stable.
 
 ---
 
@@ -71,7 +74,8 @@ NVD CVE API         FIRST.org EPSS       CISA KEV
 **Download the pre-built catalog (fastest):**
 
 ```bash
-curl -L https://openastra.org/oebc/catalog/v0.1/latest.json -o oebc_catalog.json
+# Download and decompress in one step
+curl -L https://openastra.org/oebc/catalog/v0.1/latest.json.gz | gunzip > oebc_catalog.json
 ```
 
 **Or use the CLI:**

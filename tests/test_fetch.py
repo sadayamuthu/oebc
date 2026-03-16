@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gzip
 import json
 from unittest.mock import MagicMock, patch
 
@@ -26,17 +27,21 @@ def _fake_catalog():
     }
 
 
+def _gzip_json(data):
+    return gzip.compress(json.dumps(data).encode())
+
+
 def test_fetch_writes_default_output(tmp_path):
     out = str(tmp_path / "catalog.json")
     fake = _fake_catalog()
     mock_resp = MagicMock()
-    mock_resp.json.return_value = fake
+    mock_resp.content = _gzip_json(fake)
     mock_resp.raise_for_status.return_value = None
 
     with patch("oebc.fetch.requests.get", return_value=mock_resp) as mock_get:
         fetch_main(_make_args(out=out))
 
-    mock_get.assert_called_once_with(OEBC_CATALOG_URL, timeout=30)
+    mock_get.assert_called_once_with(OEBC_CATALOG_URL, timeout=60)
     with open(out, encoding="utf-8") as f:
         data = json.load(f)
     assert data["count"] == 2
@@ -45,7 +50,7 @@ def test_fetch_writes_default_output(tmp_path):
 def test_fetch_uses_custom_out(tmp_path):
     out = str(tmp_path / "my-catalog.json")
     mock_resp = MagicMock()
-    mock_resp.json.return_value = _fake_catalog()
+    mock_resp.content = _gzip_json(_fake_catalog())
     mock_resp.raise_for_status.return_value = None
 
     with patch("oebc.fetch.requests.get", return_value=mock_resp):
@@ -65,4 +70,4 @@ def test_fetch_raises_on_http_error():
 
 
 def test_catalog_url_is_correct():
-    assert OEBC_CATALOG_URL == "https://openastra.org/oebc/catalog/v0.1/latest.json"
+    assert OEBC_CATALOG_URL == "https://openastra.org/oebc/catalog/v0.1/latest.json.gz"
