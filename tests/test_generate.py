@@ -7,6 +7,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+from requests.adapters import HTTPAdapter
 
 from oebc.generate import (
     _generate_parser,
@@ -101,12 +102,15 @@ def test_fetch_nvd_cves_single_page():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = page
 
-    with patch("oebc.generate.requests.get", return_value=mock_resp) as mock_get:
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
         result = fetch_nvd_cves("https://nvd.example.com")
 
     assert len(result) == 2
     assert result[0]["id"] == "CVE-2024-0001"
-    mock_get.assert_called_once()
+    mock_session.get.assert_called_once()
 
 
 def test_fetch_nvd_cves_multiple_pages():
@@ -115,13 +119,18 @@ def test_fetch_nvd_cves_multiple_pages():
     page2 = _nvd_page([_nvd_cve("CVE-2024-0002")], total=2, start=1)
     page2["resultsPerPage"] = 1
 
-    responses = [MagicMock(), MagicMock()]
-    responses[0].raise_for_status.return_value = None
-    responses[0].json.return_value = page1
-    responses[1].raise_for_status.return_value = None
-    responses[1].json.return_value = page2
+    resp1 = MagicMock()
+    resp1.raise_for_status.return_value = None
+    resp1.json.return_value = page1
+    resp2 = MagicMock()
+    resp2.raise_for_status.return_value = None
+    resp2.json.return_value = page2
 
-    with patch("oebc.generate.requests.get", side_effect=responses):
+    mock_sessions = [MagicMock(), MagicMock()]
+    mock_sessions[0].get.return_value = resp1
+    mock_sessions[1].get.return_value = resp2
+
+    with patch("oebc.generate._make_session", side_effect=mock_sessions):
         result = fetch_nvd_cves("https://nvd.example.com")
 
     assert len(result) == 2
@@ -135,7 +144,10 @@ def test_fetch_nvd_cves_empty_page_breaks():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = page
 
-    with patch("oebc.generate.requests.get", return_value=mock_resp):
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
         result = fetch_nvd_cves("https://nvd.example.com")
 
     assert result == []
@@ -149,7 +161,10 @@ def test_fetch_epss_scores_single_page():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = page
 
-    with patch("oebc.generate.requests.get", return_value=mock_resp):
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
         result = fetch_epss_scores("https://epss.example.com")
 
     assert result["CVE-2024-0001"]["epss"] == pytest.approx(0.5)
@@ -160,13 +175,18 @@ def test_fetch_epss_scores_multiple_pages():
     page1 = _epss_page([_epss_record("CVE-2024-0001")], total=2, offset=0, limit=1)
     page2 = _epss_page([_epss_record("CVE-2024-0002")], total=2, offset=1, limit=1)
 
-    responses = [MagicMock(), MagicMock()]
-    responses[0].raise_for_status.return_value = None
-    responses[0].json.return_value = page1
-    responses[1].raise_for_status.return_value = None
-    responses[1].json.return_value = page2
+    resp1 = MagicMock()
+    resp1.raise_for_status.return_value = None
+    resp1.json.return_value = page1
+    resp2 = MagicMock()
+    resp2.raise_for_status.return_value = None
+    resp2.json.return_value = page2
 
-    with patch("oebc.generate.requests.get", side_effect=responses):
+    mock_sessions = [MagicMock(), MagicMock()]
+    mock_sessions[0].get.return_value = resp1
+    mock_sessions[1].get.return_value = resp2
+
+    with patch("oebc.generate._make_session", side_effect=mock_sessions):
         result = fetch_epss_scores("https://epss.example.com")
 
     assert "CVE-2024-0001" in result
@@ -180,7 +200,10 @@ def test_fetch_epss_scores_empty_page_breaks():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = page
 
-    with patch("oebc.generate.requests.get", return_value=mock_resp):
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
         result = fetch_epss_scores("https://epss.example.com")
 
     assert result == {}
@@ -197,7 +220,10 @@ def test_fetch_kev():
     mock_resp.raise_for_status.return_value = None
     mock_resp.json.return_value = payload
 
-    with patch("oebc.generate.requests.get", return_value=mock_resp):
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
         result = fetch_kev("https://kev.example.com")
 
     assert result["CVE-2021-44228"]["date_added"] == "2021-12-10"
@@ -392,7 +418,12 @@ def test_generate_main_writes_file(tmp_path):
     epss_resp = MagicMock(raise_for_status=MagicMock(), json=MagicMock(return_value=epss_page))
     kev_resp = MagicMock(raise_for_status=MagicMock(), json=MagicMock(return_value=kev_payload))
 
-    with patch("oebc.generate.requests.get", side_effect=[nvd_resp, epss_resp, kev_resp]):
+    mock_sessions = [MagicMock(), MagicMock(), MagicMock()]
+    mock_sessions[0].get.return_value = nvd_resp
+    mock_sessions[1].get.return_value = epss_resp
+    mock_sessions[2].get.return_value = kev_resp
+
+    with patch("oebc.generate._make_session", side_effect=mock_sessions):
         generate_main(args)
 
     with open(out, encoding="utf-8") as f:
@@ -423,3 +454,58 @@ def test_generate_parser_overrides():
     assert args.out == "my.json"
     assert args.actionable_min_tier == "high"
     assert args.epss_high_threshold == pytest.approx(0.25)
+    assert args.epss_medium_threshold == pytest.approx(0.05)
+
+
+# ─── _make_session ───────────────────────────────────────────────────────────
+
+def test_make_session_has_retry_adapter():
+    from oebc.generate import _make_session
+    session = _make_session()
+    assert isinstance(session.get_adapter("https://example.com"), HTTPAdapter)
+
+
+# ─── NVD API key ─────────────────────────────────────────────────────────────
+
+def test_fetch_nvd_cves_with_api_key():
+    page = _nvd_page([_nvd_cve("CVE-2024-0001")], total=1)
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    mock_resp.json.return_value = page
+
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
+        fetch_nvd_cves("https://nvd.example.com", api_key="test-key-123")
+
+    call_kwargs = mock_session.get.call_args
+    assert call_kwargs[1]["params"]["apiKey"] == "test-key-123"
+
+
+def test_fetch_nvd_cves_without_api_key():
+    page = _nvd_page([_nvd_cve("CVE-2024-0001")], total=1)
+    mock_resp = MagicMock()
+    mock_resp.raise_for_status.return_value = None
+    mock_resp.json.return_value = page
+
+    with patch("oebc.generate._make_session") as mock_session_factory:
+        mock_session = MagicMock()
+        mock_session.get.return_value = mock_resp
+        mock_session_factory.return_value = mock_session
+        fetch_nvd_cves("https://nvd.example.com", api_key=None)
+
+    call_kwargs = mock_session.get.call_args
+    assert "apiKey" not in call_kwargs[1]["params"]
+
+
+def test_generate_parser_nvd_api_key_default():
+    parser = _generate_parser()
+    args = parser.parse_args([])
+    assert args.nvd_api_key is None
+
+
+def test_generate_parser_nvd_api_key_set():
+    parser = _generate_parser()
+    args = parser.parse_args(["--nvd_api_key", "my-key"])
+    assert args.nvd_api_key == "my-key"

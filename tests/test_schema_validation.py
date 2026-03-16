@@ -12,9 +12,9 @@ import pytest
 def _load_schema() -> dict:
     """Load the current schema file from spec/schemas/ (anchored to repo root)."""
     repo_root = pathlib.Path(__file__).parent.parent
-    schema_files = list(repo_root.glob("spec/schemas/oebc-v*.json"))
+    schema_files = sorted(repo_root.glob("spec/schemas/oebc-v*.json"))
     assert schema_files, f"No schema file found in {repo_root / 'spec/schemas/'}"
-    with open(schema_files[0], encoding="utf-8") as f:
+    with open(schema_files[-1], encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -115,5 +115,13 @@ def test_extra_top_level_field_fails():
     schema = _load_schema()
     catalog = _minimal_catalog()
     catalog["unexpected_field"] = "surprise"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(catalog, schema)
+
+
+def test_invalid_rules_missing_field_fails():
+    schema = _load_schema()
+    catalog = _minimal_catalog()
+    del catalog["rules"]["actionable_min_tier"]
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(catalog, schema)

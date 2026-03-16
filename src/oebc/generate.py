@@ -12,6 +12,8 @@ from datetime import UTC, datetime
 from typing import Any
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from .urls import EPSS_URL, KEV_URL, NVD_URL
 
@@ -27,16 +29,35 @@ _TIER_ORDER = {"LOW": 0, "MEDIUM": 1, "HIGH": 2, "CRITICAL": 3}
 
 # ─── Data fetching ───────────────────────────────────────────────────────────
 
-def fetch_nvd_cves(nvd_url: str) -> list[dict]:
+def _make_session() -> requests.Session:
+    """Return a requests Session with automatic retry on transient errors."""
+    session = requests.Session()
+    retry = Retry(
+        total=5,
+        backoff_factor=2,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+def fetch_nvd_cves(nvd_url: str, api_key: str | None = None) -> list[dict]:
     """Fetch all CVEs from the NVD API (paginated). Returns list of raw CVE dicts."""
     cves: list[dict] = []
     start = 0
     total = None
 
     while total is None or start < total:
-        r = requests.get(
+        params: dict = {"startIndex": start, "resultsPerPage": _NVD_PAGE_SIZE}
+        if api_key:
+            params["apiKey"] = api_key
+        r = _make_session().get(
             nvd_url,
-            params={"startIndex": start, "resultsPerPage": _NVD_PAGE_SIZE},
+            params=params,
             timeout=60,
         )
         r.raise_for_status()
@@ -58,7 +79,7 @@ def fetch_epss_scores(epss_url: str) -> dict[str, dict]:
     total = None
 
     while total is None or offset < total:
-        r = requests.get(
+        r = _make_session().get(
             epss_url,
             params={"offset": offset, "limit": _EPSS_PAGE_SIZE},
             timeout=60,
@@ -81,7 +102,7 @@ def fetch_epss_scores(epss_url: str) -> dict[str, dict]:
 
 def fetch_kev(kev_url: str) -> dict[str, dict]:
     """Fetch CISA KEV list. Returns dict keyed by CVE ID."""
-    r = requests.get(kev_url, timeout=30)
+    r = _make_session().get(kev_url, timeout=30)
     r.raise_for_status()
     data = r.json()
     return {
@@ -257,13 +278,15 @@ def _generate_parser(add_help: bool = True) -> argparse.ArgumentParser:
     p.add_argument("--nvd_url", default=NVD_URL, help="Override NVD source URL")
     p.add_argument("--epss_url", default=EPSS_URL, help="Override EPSS source URL")
     p.add_argument("--kev_url", default=KEV_URL, help="Override CISA KEV source URL")
+    p.add_argument("--nvd_api_key", default=None,
+                   help="NVD API key for higher rate limits (optional)")
     return p
 
 
 def main(args: argparse.Namespace) -> None:
     """Generate the catalog from live sources and write to args.out."""
     print(f"Fetching CVEs from NVD: {args.nvd_url}")
-    nvd_cves = fetch_nvd_cves(args.nvd_url)
+    nvd_cves = fetch_nvd_cves(args.nvd_url, api_key=getattr(args, "nvd_api_key", None))
     print(f"  → {len(nvd_cves)} CVEs fetched")
 
     print(f"Fetching EPSS scores: {args.epss_url}")

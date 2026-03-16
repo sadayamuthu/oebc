@@ -20,7 +20,24 @@
       },
       "additionalProperties": false
     },
-    "rules": { "type": "object" },
+    "rules": {
+      "type": "object",
+      "required": ["exposure_tier_definition", "tier_order", "actionable_min_tier"],
+      "properties": {
+        "exposure_tier_definition": {
+          "type": "object",
+          "required": ["critical", "high", "medium", "low"],
+          "properties": {
+            "critical": { "type": "string" },
+            "high": { "type": "string" },
+            "medium": { "type": "string" },
+            "low": { "type": "string" }
+          }
+        },
+        "tier_order": { "type": "string" },
+        "actionable_min_tier": { "type": "string", "enum": ["low", "medium", "high", "critical"] }
+      }
+    },
     "count": { "type": "integer", "minimum": 0 },
     "vulnerabilities": {
       "type": "array",
@@ -37,8 +54,8 @@
         "properties": {
           "cve_id": { "type": "string", "pattern": "^CVE-[0-9]{4}-[0-9]+$" },
           "description": { "type": "string" },
-          "published_date": { "type": "string" },
-          "last_modified_date": { "type": "string" },
+          "published_date": { "type": "string", "minLength": 10 },
+          "last_modified_date": { "type": "string", "minLength": 10 },
           "cwe_ids": { "type": "array", "items": { "type": "string" } },
           "cvss_score": { "type": ["number", "null"] },
           "cvss_vector": { "type": ["string", "null"] },
