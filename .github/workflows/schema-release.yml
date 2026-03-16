@@ -44,8 +44,8 @@ jobs:
         env:
           DEPLOY_TOKEN: ${{ secrets.OEBC_DEPLOY_TOKEN }}
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          SCHEMA_DIR=${{ steps.version.outputs.schema_dir }}
+          VERSION="${{ steps.version.outputs.version }}"
+          SCHEMA_DIR="${{ steps.version.outputs.schema_dir }}"
 
           if ! ls spec/schemas/oebc-v*.json 1>/dev/null 2>&1; then
             echo "::error::No JSON schema file found in spec/schemas/"
