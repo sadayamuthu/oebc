@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oebc"
+# Package version (pip/PyPI). Schema version is tracked separately in spec/VERSION.
 version = "0.1.0"
 description = "Open Exposure Baseline Catalog — daily CVE exposure baseline enriched with EPSS, KEV, and derived exposure tiers."
 readme = "README.md"
@@ -37,11 +38,12 @@ addopts = "--cov=oebc --cov-report=term-missing --cov-fail-under=100"
 
 [tool.coverage.run]
 source = ["oebc"]
+omit = ["*/oebc/__main__.py"]
 
 [tool.coverage.report]
 show_missing = true
 exclude_lines = [
-    "if __name__ == .__main__.",
+    "if __name__ == ['\"]__main__['\"]",
     "pragma: no cover",
 ]
 
@@ -54,4 +56,4 @@ src = ["src", "tests"]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["oebc", "src"]
+known-first-party = ["oebc"]
