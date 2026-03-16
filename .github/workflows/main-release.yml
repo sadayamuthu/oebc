@@ -1,0 +1,120 @@
+name: Main Release Pipeline
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main-release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev dependencies
+        run: make install-dev
+
+      - name: Run code validation checks
+        run: make check
+
+  generate-and-release:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        run: make install
+
+      - name: Generate catalog
+        run: make generate
+
+      - name: Publish catalog to openastra.org
+        id: publish
+        env:
+          DEPLOY_TOKEN: ${{ secrets.OEBC_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(tr -d '[:space:]' < spec/VERSION)
+          SCHEMA_DIR="v$(echo $VERSION | cut -d. -f1-2)"
+          DATE=$(date -u +%Y-%m-%d)
+
+          git clone https://x-access-token:${DEPLOY_TOKEN}@github.com/sadayamuthu/openastra.org.git /tmp/openastra-org
+
+          mkdir -p /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/historical
+          cp oebc_full_catalog_enriched.json \
+            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/latest.json
+          cp oebc_full_catalog_enriched.json \
+            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/historical/${DATE}.json
+
+          cd /tmp/openastra-org
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add oebc/catalog/${SCHEMA_DIR}/
+          if git diff --cached --quiet; then
+            echo "No catalog changes to publish."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            git commit -m "catalog: update oebc baseline ${DATE}"
+            git push
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: steps.publish.outputs.published == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="baseline-$(date -u +%Y-%m-%d)"
+          COUNT=$(jq '.count' oebc_full_catalog_enriched.json)
+          GENERATED=$(jq -r '.generated_at_utc' oebc_full_catalog_enriched.json)
+          VERSION=$(tr -d '[:space:]' < spec/VERSION)
+          SCHEMA_DIR="v$(echo $VERSION | cut -d. -f1-2)"
+          DATE=$(date -u +%Y-%m-%d)
+
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          git tag -d "$TAG" 2>/dev/null || true
+          git push origin ":refs/tags/$TAG" 2>/dev/null || true
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          gh release create "$TAG" \
+            --title "Open Exposure Baseline Catalog — ${TAG}" \
+            --notes "$(cat <<EOF
+          ## Open Exposure Baseline Catalog (OEBC)
+
+          **Generated at:** ${GENERATED}
+          **Total vulnerabilities:** ${COUNT}
+
+          ### Catalog URLs
+
+          - Latest: https://openastra.org/oebc/catalog/${SCHEMA_DIR}/latest.json
+          - This date: https://openastra.org/oebc/catalog/${SCHEMA_DIR}/historical/${DATE}.json
+
+          > Generated automatically by GitHub Actions from NVD, EPSS, and CISA KEV sources.
+          EOF
+          )"
