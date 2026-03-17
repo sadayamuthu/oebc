@@ -65,22 +65,20 @@ jobs:
           # Compress catalog — raw JSON is ~290 MB which exceeds GitHub's 100 MB limit.
           # gzip typically achieves ~10x compression on JSON, bringing it to ~25-30 MB.
           gzip -9 -k oebc_full_catalog_enriched.json
-          # Rename so the extension stays .json.gz for clarity
-          mv oebc_full_catalog_enriched.json.gz oebc_full_catalog_enriched.json.gz
-
           git clone https://x-access-token:${DEPLOY_TOKEN}@github.com/sadayamuthu/openastra.org.git /tmp/openastra-org
 
           # Publish only the compressed latest snapshot to the repo.
           # Historical snapshots are attached to GitHub Releases (see next step)
           # to avoid unbounded repo growth (~30 MB/day).
-          mkdir -p /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}
+          # Files must live under public/ to be served by the site at openastra.org/...
+          mkdir -p /tmp/openastra-org/public/oebc/catalog/${SCHEMA_DIR}
           cp oebc_full_catalog_enriched.json.gz \
-            /tmp/openastra-org/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
+            /tmp/openastra-org/public/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
 
           cd /tmp/openastra-org
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          git add oebc/catalog/${SCHEMA_DIR}/latest.json.gz
+          git add public/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
           if git diff --cached --quiet; then
             echo "No catalog changes to publish."
             echo "published=false" >> "$GITHUB_OUTPUT"

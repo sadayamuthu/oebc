@@ -58,14 +58,15 @@ jobs:
 
           git clone https://x-access-token:${DEPLOY_TOKEN}@github.com/sadayamuthu/openastra.org.git /tmp/openastra-org
 
-          mkdir -p /tmp/openastra-org/oebc/schema/${SCHEMA_DIR}
-          cp spec/schemas/oebc-v*.json /tmp/openastra-org/oebc/schema/${SCHEMA_DIR}/oebc.json
-          cp spec/schemas/oebc-v*.yaml /tmp/openastra-org/oebc/schema/${SCHEMA_DIR}/oebc.yaml 2>/dev/null || true
+          # Files must live under public/ to be served by the site at openastra.org/...
+          mkdir -p /tmp/openastra-org/public/oebc/schema/${SCHEMA_DIR}
+          cp spec/schemas/oebc-v*.json /tmp/openastra-org/public/oebc/schema/${SCHEMA_DIR}/oebc.json
+          cp spec/schemas/oebc-v*.yaml /tmp/openastra-org/public/oebc/schema/${SCHEMA_DIR}/oebc.yaml 2>/dev/null || true
 
           cd /tmp/openastra-org
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          git add oebc/schema/${SCHEMA_DIR}/
+          git add public/oebc/schema/${SCHEMA_DIR}/
           if git diff --cached --quiet; then
             echo "No schema changes to publish."
           else
