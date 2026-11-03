@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/sadayamuthu/oebc/actions/workflows/develop.yml/badge.svg)](https://github.com/sadayamuthu/oebc/actions/workflows/develop.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/sadayamuthu/oebc)](LICENSE)
 [![Catalog](https://img.shields.io/badge/catalog-latest-green)](https://openastra.org/oebc/catalog/v0.1/latest.json.gz)
 [![Schema](https://img.shields.io/badge/schema-v0.1-blue)](https://openastra.org/oebc/schema/v0.1/oebc.json)
 
@@ -105,12 +105,12 @@ make generate
 
 - **250k+ CVEs** — full NVD catalog, updated daily
 - **Three authoritative sources** — NVD, EPSS, CISA KEV joined by CVE ID
-- **Derived exposure tiers** — CRITICAL / HIGH / MEDIUM / LOW with configurable thresholds
+- **Derived exposure tiers** — CRITICAL / HIGH / MEDIUM / LOW from KEV, EPSS and CVSS
 - **Actionable flag** — boolean shortcut for tiers at or above a configurable minimum
 - **Null-safe enrichment** — missing CVSS or EPSS scores handled gracefully
-- **Configurable thresholds** — EPSS cutoffs and CVSS bands exposed as CLI flags
+- **Configurable thresholds** — EPSS cutoffs exposed as CLI flags (CVSS bands are fixed at 9.0 and 7.0)
 - **Retry-resilient** — exponential backoff on NVD / EPSS / KEV HTTP failures
-- **Schema-validated** — JSON Schema Draft 2020-12 with `additionalProperties: false`
+- **Versioned schema** — JSON Schema Draft 2020-12 with `additionalProperties: false`, checked by the test suite
 - **PyPI package** — `pip install oebc`
 
 ---
@@ -265,11 +265,13 @@ flowchart TD
 
 ```
 oebc/
-├── .github/workflows/
-│   ├── main-release.yml        # Daily catalog generation → publish to openastra.org
-│   ├── schema-release.yml      # Schema versioning → publish schema to openastra.org
-│   ├── pypi-publish.yml        # Publish to PyPI on v*.*.* tags
-│   └── develop.yml             # CI on PRs and pushes to develop branch
+├── .github/
+│   ├── dependabot.yml          # Weekly grouped pip and Actions updates
+│   └── workflows/
+│       ├── main-release.yml    # Daily catalog generation → publish to openastra.org
+│       ├── schema-release.yml  # Schema versioning → publish schema to openastra.org
+│       ├── pypi-publish.yml    # Publish to PyPI on v*.*.* tags
+│       └── develop.yml         # CI on PRs and pushes to develop branch
 ├── spec/
 │   ├── VERSION                 # Semver schema version (e.g., 0.1.0)
 │   └── schemas/
@@ -286,10 +288,15 @@ oebc/
 │   ├── test_cli.py
 │   ├── test_fetch.py
 │   ├── test_generate.py
-│   └── test_schema_validation.py
+│   ├── test_schema_validation.py
+│   └── test_version.py
+├── CITATION.cff
+├── CONTRIBUTING.md
+├── LICENSE
 ├── Makefile
 ├── pyproject.toml
-└── README.md
+├── README.md
+└── SECURITY.md
 ```
 
 > **Note:** No `baseline/` or `historical/` directory. Catalog artifacts are generated ephemerally in CI and pushed directly to openastra.org — the repo stays clean.
@@ -304,8 +311,8 @@ OEBC ships four GitHub Actions workflows:
 
 Triggered on push to `develop` and pull requests targeting `develop` or `main`.
 
-- Lint with ruff
-- Full test suite across Python 3.11, 3.12, 3.13
+- `make check`: lint with ruff, then the full test suite with 100% coverage enforced
+- Runs on Python 3.11, 3.12, 3.13
 
 ### `main-release.yml` — Daily Catalog Generation
 
@@ -313,8 +320,8 @@ Triggered on schedule (daily 06:00 UTC), push to `main`, and manual dispatch.
 
 1. Test across Python 3.11, 3.12, 3.13
 2. `oebc generate --out oebc_full_catalog_enriched.json` (ephemeral)
-3. Publish `latest.json` + `historical/YYYY-MM-DD.json` to `openastra.org/oebc/catalog/v0.1/`
-4. Create GitHub Release tagged `baseline-YYYY-MM-DD`
+3. gzip the catalog and push it as `public/oebc/catalog/v0.1/latest.json.gz` to the openastra.org site repository (served at `openastra.org/oebc/catalog/v0.1/latest.json.gz`)
+4. If the catalog changed, create a GitHub Release tagged `baseline-YYYY-MM-DD` with the snapshot attached as `oebc-catalog-YYYY-MM-DD.json.gz`
 
 Requires secret: `OEBC_DEPLOY_TOKEN`
 
@@ -376,14 +383,34 @@ All sources are fetched live at generation time. No local data files committed t
 
 ---
 
+## Contributing
+
+To report a wrong tier, a wrong EPSS or KEV join or a missing CVE, or to send
+a change, see **[CONTRIBUTING.md](CONTRIBUTING.md)**. It covers the dev setup,
+the 100% coverage rule, how tier rules change and how the schema is versioned.
+
+---
+
+## Security
+
+Please don't report security problems in a public issue. Use
+[**Report a vulnerability**](https://github.com/sadayamuthu/oebc/security/advisories/new)
+on the Security tab; see **[SECURITY.md](SECURITY.md)** for what's in scope.
+
+---
+
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[MIT License](LICENSE)
+
+The license covers the code in this repository. The catalog republishes NVD,
+FIRST EPSS and CISA KEV data, which stays under its providers' terms; see
+[Upstream data](CONTRIBUTING.md#upstream-data).
 
 ---
 
 <div align="center">
 
-[Catalog](https://openastra.org/oebc/catalog/v0.1/latest.json) · [Schema](https://openastra.org/oebc/schema/v0.1/oebc.json) · [PyPI](https://pypi.org/project/oebc/) · [openastra.org](https://openastra.org)
+[Catalog](https://openastra.org/oebc/catalog/v0.1/latest.json.gz) · [Schema](https://openastra.org/oebc/schema/v0.1/oebc.json) · [PyPI](https://pypi.org/project/oebc/) · [openastra.org](https://openastra.org)
 
 </div>
