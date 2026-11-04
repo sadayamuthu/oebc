@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use OEBC or its catalog, please cite it using these metadata."
+title: "OEBC: Open Exposure Baseline Catalog"
+abstract: >-
+  OEBC is a daily, machine-readable CVE exposure baseline. It fetches every
+  CVE from the NVD CVE API, joins each one by CVE ID with its FIRST EPSS
+  score and percentile and its CISA Known Exploited Vulnerabilities entry,
+  and adds two derived fields: an exposure tier (CRITICAL, HIGH, MEDIUM or
+  LOW) and an actionable flag. The catalog is published as gzip-compressed
+  JSON at openastra.org, with a versioned JSON Schema, and is built by a
+  Python package and command-line tool, oebc.
+type: software
+authors:
+  - family-names: Sadayamuthu
+    given-names: Karthikeyan
+    orcid: "https://orcid.org/0009-0008-3539-6048"
+version: 0.1.0
+date-released: "2026-11-03"
+license: MIT
+repository-code: "https://github.com/sadayamuthu/oebc"
+url: "https://openastra.org"
+keywords:
+  - CVE
+  - EPSS
+  - CISA KEV
+  - vulnerability management
+  - exposure
+  - NVD
