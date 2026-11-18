@@ -18,7 +18,7 @@
 
 ## What is OEBC?
 
-OEBC is a daily, machine-readable, cloud-agnostic **exposure baseline catalog** derived from three authoritative sources:
+OEBC is a weekly, machine-readable, cloud-agnostic **exposure baseline catalog** derived from three authoritative sources:
 
 - **[NVD](https://nvd.nist.gov/)** — CVE descriptions, CVSS scores, CWE IDs, published/modified dates
 - **[FIRST.org EPSS](https://www.first.org/epss/)** — Exploitation probability score and percentile per CVE
@@ -65,7 +65,7 @@ NVD CVE API         FIRST.org EPSS       CISA KEV
 | JSON Schema | `https://openastra.org/oebc/schema/v0.1/oebc.json` |
 | YAML Schema | `https://openastra.org/oebc/schema/v0.1/oebc.yaml` |
 
-> The catalog is gzip-compressed to stay under GitHub's 100 MB file size limit (raw JSON is ~290 MB; compressed is ~25–30 MB). Historical daily snapshots are attached as release assets rather than committed to the repo, keeping repo size stable.
+> The catalog is gzip-compressed to stay under GitHub's 100 MB file size limit (raw JSON is ~290 MB; compressed is ~25–30 MB). Historical weekly snapshots are attached as release assets rather than committed to the repo, keeping repo size stable.
 
 ---
 
@@ -103,7 +103,7 @@ make generate
 
 ## Features
 
-- **250k+ CVEs** — full NVD catalog, updated daily
+- **250k+ CVEs** — full NVD catalog, updated weekly
 - **Three authoritative sources** — NVD, EPSS, CISA KEV joined by CVE ID
 - **Derived exposure tiers** — CRITICAL / HIGH / MEDIUM / LOW from KEV, EPSS and CVSS
 - **Actionable flag** — boolean shortcut for tiers at or above a configurable minimum
@@ -268,7 +268,7 @@ oebc/
 ├── .github/
 │   ├── dependabot.yml          # Weekly grouped pip and Actions updates
 │   └── workflows/
-│       ├── main-release.yml    # Daily catalog generation → publish to openastra.org
+│       ├── main-release.yml    # Weekly catalog generation → publish to openastra.org
 │       ├── schema-release.yml  # Schema versioning → publish schema to openastra.org
 │       ├── pypi-publish.yml    # Publish to PyPI on v*.*.* tags
 │       └── develop.yml         # CI on PRs and pushes to develop branch
@@ -314,9 +314,9 @@ Triggered on push to `develop` and pull requests targeting `develop` or `main`.
 - `make check`: lint with ruff, then the full test suite with 100% coverage enforced
 - Runs on Python 3.11, 3.12, 3.13
 
-### `main-release.yml` — Daily Catalog Generation
+### `main-release.yml` — Weekly Catalog Generation
 
-Triggered on schedule (daily 06:00 UTC), push to `main`, and manual dispatch.
+Triggered on schedule (weekly, Mondays 06:00 UTC), push to `main`, and manual dispatch.
 
 1. Test across Python 3.11, 3.12, 3.13
 2. `oebc generate --out oebc_full_catalog_enriched.json` (ephemeral)

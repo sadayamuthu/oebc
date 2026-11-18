@@ -2,7 +2,7 @@ name: Main Release Pipeline
 
 on:
   schedule:
-    - cron: "0 6 * * *"
+    - cron: "0 6 * * 1"  # weekly, Mondays 06:00 UTC
   push:
     branches: [main]
   workflow_dispatch:
@@ -135,7 +135,7 @@ jobs:
           ### Catalog URLs
 
           - Latest (compressed): https://openastra.org/oebc/catalog/${SCHEMA_DIR}/latest.json.gz
-          - Historical snapshots: attached as release assets to each daily release
+          - Historical snapshots: attached as release assets to each weekly release
 
           > Generated automatically by GitHub Actions from NVD, EPSS, and CISA KEV sources.
           EOF
